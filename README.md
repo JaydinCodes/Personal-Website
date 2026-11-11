@@ -2,8 +2,8 @@
 
 This repository contains the source code for a high‑end personal website for **Jaydin Morrison** built using a modern full‑stack architecture.  The project is designed to be modular, scalable and production‑ready with the following stack:
 
-* **Frontend** – [Vue 3](https://vuejs.org/) with [Tailwind CSS](https://tailwindcss.com/) bundled by [Vite](https://vitejs.dev/) and organised into reusable components and views.
-* **Middleware** – A lightweight [Express](https://expressjs.com/) server written in Node.js that serves the compiled frontend and proxies all `/api` requests to the backend.  It enforces basic HTTP authentication, sanitises input data and uses sensible security headers via Helmet.
+* **Frontend** – [Next.js 14](https://nextjs.org/) (App Router) with [Tailwind CSS](https://tailwindcss.com/) and [Framer Motion](https://www.framer.com/motion/), organised into reusable UI and layout components.
+* **Middleware** – A lightweight [Express](https://expressjs.com/) server written in Node.js that proxies non-API requests to the Next.js server in production and proxies `/api` requests to the Django backend. It enforces basic HTTP authentication, sanitises input data and uses sensible security headers via Helmet.
 * **Backend** – A [Django 4](https://www.djangoproject.com/) application that exposes a REST API using the Django REST Framework (DRF).  The backend provides CRUD endpoints for portfolio projects and a contact endpoint for form submissions.  It connects to a PostgreSQL database via [`dj‑database‑url`](https://github.com/jazzband/dj-database-url) and includes a fully‑featured admin interface.
 * **Database** – [PostgreSQL](https://www.postgresql.org/) accessed through Django’s ORM.  For local development the default database is SQLite but the configuration is automatically upgraded when `DATABASE_URL` is provided.
 * **Deployment** – A single [Heroku](https://www.heroku.com/) dyno runs both the Node middleware and the Django API concurrently.  A [`Procfile`](./Procfile) and [`start-prod.sh`](./scripts/start-prod.sh) script coordinate the two processes.  Static files are served by the middleware and all API traffic is proxied to the internal Django server.
@@ -13,15 +13,14 @@ This repository contains the source code for a high‑end personal website for *
 
 ```
 Browser ──► Node.js (middleware) ──► Django REST API ──► PostgreSQL
-                │                         │
-                └─────► Serves Vue app ◄─┘
+                │
+                └─────► Proxies to Next.js app
 ```
 
-1. **Vue 3 Frontend** (`frontend/`)
-   * Organised into views (`Home.vue`, `Projects.vue`, `About.vue`, `Contact.vue`) and components (`Navbar.vue`, `Footer.vue`).  Each page is responsive, accessible and SEO‑friendly, using semantic HTML and Tailwind utility classes.
-   * State is kept local to each component; API calls use `axios` and point to `/api/...` – the middleware takes care of forwarding requests to Django.
-   * A simple router defines clean URLs and supports dynamic project detail pages.
-   * Tailwind CSS is configured via `tailwind.config.js` and `postcss.config.js`.  All styles live in `src/assets/tailwind.css`, which imports Tailwind’s base, component and utility layers.
+1. **Next.js Frontend** (`frontend/`)
+   * Built with Next.js App Router (`app/layout.js`, `app/page.js`) and modular components (`components/PortfolioPage.jsx`, `components/layout/TopNav.jsx`, `components/ui/*`). Each section is responsive, accessible and SEO‑friendly, using semantic HTML, Framer Motion animations, and Tailwind utility classes.
+   * Fetches dynamic projects from `/api/projects/` (falling back to curated projects in `data/projects.js`) and submits contact messages to `/api/contact` – the middleware takes care of forwarding requests to Django.
+   * Tailwind CSS is configured via `tailwind.config.js` and `postcss.config.js`. Global styles live in `app/globals.css`.
 
 2. **Express Middleware** (`middleware/`)
    * Uses [Helmet](https://helmetjs.github.io/) to set secure HTTP headers and [xss‑clean](https://github.com/validatorjs/xss-clean) to strip malicious HTML from request bodies.

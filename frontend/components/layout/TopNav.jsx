@@ -20,12 +20,12 @@ export default function TopNav() {
         <a href="#hero" className="font-display text-lg text-white">
           Jaydin
         </a>
-        <nav className="hidden items-center gap-6 md:flex">
+        <nav aria-label="Primary" className="hidden items-center gap-6 md:flex">
           {links.map((item) => (
             <a
               key={item.href}
               href={item.href}
-              className="text-sm text-gray-300 transition-colors hover:text-white"
+              className="inline-flex items-center py-2 text-sm text-gray-300 transition-colors hover:text-white"
             >
               {item.label}
             </a>
@@ -40,8 +40,9 @@ export default function TopNav() {
           type="button"
           aria-label={menuOpen ? 'Close navigation menu' : 'Open navigation menu'}
           aria-expanded={menuOpen}
+          aria-controls="mobile-navigation-drawer"
           onClick={() => setMenuOpen((open) => !open)}
-          className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-white/5 text-white transition hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 focus-visible:ring-offset-black md:hidden"
+          className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/20 bg-white/5 text-white transition hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 focus-visible:ring-offset-black md:hidden"
         >
           <span className="sr-only">Menu</span>
           <div className="flex w-4 flex-col gap-1.5">
@@ -52,19 +53,30 @@ export default function TopNav() {
         </button>
       </div>
 
-      <div className={`mobile-nav ${menuOpen ? 'open' : ''}`}>
-        <nav className="mx-auto flex w-full max-w-6xl flex-col gap-2 px-4 pb-4 pt-2 sm:px-6 md:hidden">
+      <div
+        id="mobile-navigation-drawer"
+        aria-hidden={!menuOpen}
+        className={`mobile-nav ${menuOpen ? 'open' : ''}`}
+      >
+        <nav aria-label="Mobile" className="mx-auto flex w-full max-w-6xl flex-col gap-2 px-4 pb-4 pt-2 sm:px-6 md:hidden">
           {links.map((item) => (
             <a
               key={item.href}
               href={item.href}
+              tabIndex={menuOpen ? 0 : -1}
               onClick={closeMenu}
               className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-medium text-gray-100 transition hover:border-white/30 hover:bg-white/10"
             >
               {item.label}
             </a>
           ))}
-          <Button href="#contact" variant="secondary" className="mt-1 w-full py-3 text-sm" onClick={closeMenu}>
+          <Button
+            href="#contact"
+            variant="secondary"
+            tabIndex={menuOpen ? 0 : -1}
+            className="mt-1 w-full py-3 text-sm"
+            onClick={closeMenu}
+          >
             Contact Me
           </Button>
         </nav>

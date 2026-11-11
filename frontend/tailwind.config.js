@@ -28,9 +28,9 @@ module.exports = {
         },
       },
       fontFamily: {
-        body: ['Inter', 'sans-serif'],
-        display: ['Syne', 'Inter', 'sans-serif'],
-        mono: ['JetBrains Mono', 'monospace'],
+        body: ['var(--font-inter)', 'Inter', 'sans-serif'],
+        display: ['var(--font-syne)', 'Syne', 'Inter', 'sans-serif'],
+        mono: ['var(--font-mono)', 'JetBrains Mono', 'monospace'],
       },
       borderRadius: {
         lg: '0.5rem',

@@ -1,5 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Syne:wght@500;600;700;800&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -19,7 +17,7 @@
 
   body {
     @apply bg-black text-white antialiased;
-    font-family: Inter, sans-serif;
+    font-family: var(--font-inter), Inter, sans-serif;
     cursor: default;
     background-image: radial-gradient(circle at 10% 12%, rgba(225, 6, 0, 0.2), transparent 36%),
       radial-gradient(circle at 88% 20%, rgba(0, 220, 255, 0.13), transparent 30%),
@@ -67,11 +65,11 @@
   }
 
   .font-display {
-    font-family: Syne, Inter, sans-serif;
+    font-family: var(--font-syne), Syne, Inter, sans-serif;
   }
 
   .font-mono {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono), 'JetBrains Mono', monospace;
   }
 
   .hero-grid {
@@ -120,7 +118,7 @@
   .hero-portrait-shell {
     position: relative;
     margin-inline: auto;
-    width: clamp(190px, 34vw, 260px);
+    width: clamp(210px, 34vw, 290px);
     will-change: transform;
   }
 
@@ -135,25 +133,27 @@
 
   .hero-portrait-image {
     width: 100%;
+    height: auto;
     border-radius: 22px;
-    aspect-ratio: 1 / 1;
+    aspect-ratio: 4 / 5;
     object-fit: cover;
+    object-position: center 12%;
   }
 
   .hero-chip {
     position: absolute;
-    max-width: 230px;
-    background: rgba(11, 11, 15, 0.7);
+    max-width: 215px;
+    background: rgba(11, 11, 15, 0.82);
   }
 
   .hero-chip-top {
-    top: -16px;
-    right: -16px;
+    top: -18px;
+    right: -20px;
   }
 
   .hero-chip-bottom {
-    left: -16px;
-    bottom: -16px;
+    left: -20px;
+    bottom: -18px;
   }
 
   .mobile-tech-cloud {
@@ -245,7 +245,9 @@
     display: grid;
     grid-template-rows: 0fr;
     opacity: 0;
-    transition: grid-template-rows 260ms ease, opacity 220ms ease;
+    visibility: hidden;
+    pointer-events: none;
+    transition: grid-template-rows 260ms ease, opacity 220ms ease, visibility 260ms;
   }
 
   .mobile-nav > nav {
@@ -255,6 +257,8 @@
   .mobile-nav.open {
     grid-template-rows: 1fr;
     opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
   }
 
   .contact-panel {
@@ -349,6 +353,10 @@
   }
 
   @media (hover: hover) and (pointer: fine) {
+    .project-overlay {
+      opacity: 0;
+    }
+
     .project-card:hover {
       transform: translateY(-7px) scale(1.01);
       border-color: rgba(225, 6, 0, 0.65);
@@ -363,7 +371,8 @@
       transform: scale(1.09);
     }
 
-    .project-card:hover .project-overlay {
+    .project-card:hover .project-overlay,
+    .project-card:focus-within .project-overlay {
       opacity: 1;
       background: linear-gradient(to top, rgba(11, 11, 15, 0.9), rgba(11, 11, 15, 0.34));
     }
@@ -432,10 +441,9 @@
 
     .mobile-tech-cloud {
       display: block;
+      height: 210px;
     }
-  }
 
-  @media (max-width: 640px) {
     .hero-grid {
       inset: -24px -12px;
       background-size: 28px 28px;
@@ -456,14 +464,6 @@
     .hero-orb-two {
       left: -70px;
       bottom: -94px;
-    }
-
-    .hero-portrait-shell {
-      width: clamp(172px, 48vw, 230px);
-    }
-
-    .mobile-tech-cloud {
-      height: 210px;
     }
 
     .mobile-tech-pill {

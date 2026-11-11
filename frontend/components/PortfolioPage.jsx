@@ -10,7 +10,8 @@ import AnimatedSection from '@/components/ui/AnimatedSection'
 import FloatingOrb from '@/components/ui/FloatingOrb'
 import MagneticButton from '@/components/ui/MagneticButton'
 import SectionHeader from '@/components/ui/SectionHeader'
-import { projects } from '@/data/projects'
+import SkillPill from '@/components/ui/SkillPill'
+import { projects as staticProjects } from '@/data/projects'
 
 const stagger = {
   hidden: { opacity: 0 },
@@ -63,15 +64,6 @@ const techStackItems = [
   'AWS',
 ]
 
-const builderRows = [
-  'Frontend Architecture',
-  'AI Product Engineering',
-  'Performance',
-  'Secure Systems',
-  'Motion Design',
-]
-
-
 function ProjectCard({ project, index, prefersReducedMotion }) {
   const rotateX = useMotionValue(0)
   const rotateY = useMotionValue(0)
@@ -99,7 +91,15 @@ function ProjectCard({ project, index, prefersReducedMotion }) {
   const cardBody = (
     <>
       <div className="project-image-wrap">
-        <Image src={project.image} alt={project.title} width={900} height={580} className="project-image" loading="lazy" />
+        <Image
+          src={project.image || project.image_url || 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1200&q=80'}
+          alt={project.title}
+          width={900}
+          height={580}
+          sizes="(max-width: 640px) 84vw, (max-width: 768px) 66vw, (max-width: 1280px) 50vw, 33vw"
+          className="project-image"
+          loading="lazy"
+        />
         <div className="project-overlay">
           <span className="rounded-full border border-white/45 bg-black/35 px-3 py-1 text-xs uppercase tracking-[0.2em] text-white">Open GitHub Repo</span>
         </div>
@@ -147,9 +147,45 @@ export default function PortfolioPage() {
 
   const [cursorVisible, setCursorVisible] = useState(false)
   const [cursorInteractive, setCursorInteractive] = useState(false)
-  const categories = useMemo(() => ['All', ...new Set(projects.map((project) => project.category).filter(Boolean))], [])
+  const [projectItems, setProjectItems] = useState(staticProjects)
+  const [contactForm, setContactForm] = useState({ name: '', email: '', message: '' })
+  const [contactStatus, setContactStatus] = useState({ state: 'idle', detail: '' })
+
+  useEffect(() => {
+    let active = true
+    fetch('/api/projects/')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!active || !Array.isArray(data) || data.length === 0) return
+        const normalized = data.map((item, idx) => ({
+          id: item.id ?? `api-project-${idx}`,
+          title: item.title,
+          category: item.category || 'Systems',
+          tech: Array.isArray(item.tech) ? item.tech : [],
+          impact: item.impact || '',
+          href: item.href || '',
+          description: item.description,
+          image: item.image || item.image_url || staticProjects[idx % staticProjects.length]?.image,
+        }))
+        setProjectItems([...staticProjects, ...normalized])
+      })
+      .catch(() => {
+        // Fallback to staticProjects when backend API is offline
+      })
+    return () => {
+      active = false
+    }
+  }, [])
+
+  const categories = useMemo(
+    () => ['All', ...new Set(projectItems.map((project) => project.category).filter(Boolean))],
+    [projectItems],
+  )
   const [activeCategory, setActiveCategory] = useState('All')
-  const filteredProjects = useMemo(() => activeCategory === 'All' ? projects : projects.filter((project) => project.category === activeCategory), [activeCategory])
+  const filteredProjects = useMemo(
+    () => (activeCategory === 'All' ? projectItems : projectItems.filter((project) => project.category === activeCategory)),
+    [activeCategory, projectItems],
+  )
 
   const smoothX = useSpring(mouseX, { stiffness: 80, damping: 18, mass: 0.3 })
   const smoothY = useSpring(mouseY, { stiffness: 80, damping: 18, mass: 0.3 })
@@ -201,26 +237,55 @@ export default function PortfolioPage() {
     }
 
     window.addEventListener('mousemove', handleMove)
-    window.addEventListener('mouseout', handleLeave)
+    document.documentElement.addEventListener('mouseleave', handleLeave)
 
     return () => {
       window.removeEventListener('mousemove', handleMove)
-      window.removeEventListener('mouseout', handleLeave)
+      document.documentElement.removeEventListener('mouseleave', handleLeave)
     }
   }, [cursorX, cursorY, prefersReducedMotion])
 
+  const handleContactSubmit = async (event) => {
+    event.preventDefault()
+    if (!contactForm.name.trim() || !contactForm.email.trim() || !contactForm.message.trim()) {
+      setContactStatus({ state: 'error', detail: 'Please complete all fields before sending.' })
+      return
+    }
+    setContactStatus({ state: 'submitting', detail: 'Sending message...' })
+    try {
+      const response = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(contactForm),
+      })
+      if (!response.ok) {
+        throw new Error('Request failed')
+      }
+      setContactForm({ name: '', email: '', message: '' })
+      setContactStatus({ state: 'success', detail: 'Message received! I will get back to you soon.' })
+    } catch {
+      setContactStatus({
+        state: 'error',
+        detail: 'Could not reach the server right now. Please use the direct email button below.',
+      })
+    }
+  }
+
   return (
     <main className="portfolio-root">
-      <motion.div
-        initial={{ scaleY: 1 }}
-        animate={{ scaleY: 0 }}
-        transition={{ duration: 0.9, ease: [0.76, 0, 0.24, 1] }}
-        className="page-reveal"
-      />
+      {!prefersReducedMotion && (
+        <motion.div
+          aria-hidden="true"
+          initial={{ scaleY: 1 }}
+          animate={{ scaleY: 0 }}
+          transition={{ duration: 0.45, ease: [0.76, 0, 0.24, 1] }}
+          className="page-reveal"
+        />
+      )}
 
       <motion.div
         className="custom-cursor"
-        aria-hidden={prefersReducedMotion}
+        aria-hidden="true"
         style={{ x: cursorXSpring, y: cursorYSpring }}
         animate={{
           opacity: prefersReducedMotion ? 0 : cursorVisible ? 1 : 0,
@@ -236,8 +301,8 @@ export default function PortfolioPage() {
         id="hero"
         className="relative min-h-[calc(90vh-4rem)] overflow-hidden pt-3 sm:pt-6 md:pt-10"
       >
-        <FloatingOrb className="hero-orb-one" color="bg-red-500/35" style={{ x: orbOneX, y: orbOneY }} />
-        <FloatingOrb className="hero-orb-two" color="bg-orange-300/30" style={{ x: orbTwoX, y: orbTwoY }} />
+        <FloatingOrb className="hero-orb-one" color="bg-red-500/35" x={orbOneX} y={orbOneY} />
+        <FloatingOrb className="hero-orb-two" color="bg-orange-300/30" x={orbTwoX} y={orbTwoY} />
         <div className="hero-grid" />
         <div className="hero-noise" />
 
@@ -286,8 +351,8 @@ export default function PortfolioPage() {
             {techStackItems.map((item, index) => {
               const angle = (index / techStackItems.length) * Math.PI * 2
               const ring = index % 3
-              const radiusX = ring === 0 ? 19 : ring === 1 ? 25 : 30
-              const radiusY = ring === 0 ? 16 : ring === 1 ? 21 : 24
+              const radiusX = ring === 0 ? 16 : ring === 1 ? 26 : 34
+              const radiusY = ring === 0 ? 15 : ring === 1 ? 24 : 33
               const offsetX = 50 + Math.cos(angle) * radiusX
               const offsetY = 50 + Math.sin(angle) * radiusY
               const duration = 9.8 + (index % 4) * 1.15
@@ -305,8 +370,8 @@ export default function PortfolioPage() {
                   <motion.span
                     className="mobile-tech-pill"
                     animate={{
-                      x: [0, (index % 2 === 0 ? 1 : -1) * (10 + (index % 3) * 4), (index % 2 === 0 ? -1 : 1) * (8 + (index % 4) * 2), 0],
-                      y: [0, (index % 3 === 0 ? -1 : 1) * (9 + (index % 4) * 3), (index % 2 === 0 ? 1 : -1) * (7 + (index % 3) * 2), 0],
+                      x: [0, (index % 2 === 0 ? 1 : -1) * (5 + (index % 3) * 2), (index % 2 === 0 ? -1 : 1) * (4 + (index % 3) * 2), 0],
+                      y: [0, (index % 3 === 0 ? -1 : 1) * (5 + (index % 3) * 2), (index % 2 === 0 ? 1 : -1) * (4 + (index % 3) * 2), 0],
                     }}
                     transition={{
                       duration,
@@ -330,9 +395,10 @@ export default function PortfolioPage() {
             >
               <Image
                 src="/jojo.png"
-                alt="Profile placeholder"
+                alt="Illustrated portrait of Jaydin Morrison"
                 width={900}
-                height={1100}
+                height={1125}
+                sizes="(max-width: 640px) 0px, (max-width: 1024px) 240px, 290px"
                 className="hero-portrait-image"
                 priority
               />
@@ -344,15 +410,13 @@ export default function PortfolioPage() {
                 <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-gray-300">Available</p>
                 <p className="mt-2 text-sm text-white">Remote collaborations and product sprints</p>
               </Card>
-
-              
             </motion.div>
           </motion.div>
         </div>
       </Section>
 
       <Section id="about" className="pt-3 md:pt-8">
-        <div className="compact-lane grid grid-flow-col auto-cols-[92%] gap-3 overflow-x-auto pb-2 sm:auto-cols-[72%] md:grid-flow-row md:auto-cols-auto md:overflow-visible md:pb-0 lg:grid-cols-[1.1fr,0.9fr]">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-[1.1fr,0.9fr]">
           <AnimatedSection variants={fadeUp}>
             <Card className="h-full p-5 sm:p-7">
               <SectionHeader
@@ -363,17 +427,12 @@ export default function PortfolioPage() {
             </Card>
           </AnimatedSection>
 
-          <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.3 }} variants={fadeUp} className="hidden md:block">
+          <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.3 }} variants={fadeUp}>
             <Card className="h-full p-5 sm:p-7">
               <p className="font-mono text-xs uppercase tracking-[0.2em] text-red-400">Skills</p>
               <div className="mt-3 flex flex-wrap gap-1.5 sm:gap-2">
                 {skillList.map((skill) => (
-                  <span
-                    key={skill}
-                    className="rounded-full border border-white/20 bg-white/10 px-2.5 py-1 text-xs text-gray-100 sm:px-3 sm:py-1.5 sm:text-sm"
-                  >
-                    {skill}
-                  </span>
+                  <SkillPill key={skill}>{skill}</SkillPill>
                 ))}
               </div>
             </Card>
@@ -395,8 +454,9 @@ export default function PortfolioPage() {
                 layout
                 key={category}
                 type="button"
+                aria-pressed={isActive}
                 onClick={() => setActiveCategory(category)}
-                className={`rounded-full border px-3 py-1.5 text-xs uppercase tracking-[0.14em] transition ${isActive ? 'border-red-400 bg-red-500/20 text-red-100' : 'border-white/20 bg-white/5 text-gray-200 hover:border-white/40'}`}
+                className={`inline-flex min-h-[40px] items-center rounded-full border px-4 py-2 text-xs uppercase tracking-[0.14em] transition ${isActive ? 'border-red-400 bg-red-500/20 text-red-100' : 'border-white/20 bg-white/5 text-gray-200 hover:border-white/40'}`}
               >
                 {category}
               </motion.button>
@@ -414,16 +474,85 @@ export default function PortfolioPage() {
       <Section id="contact" className="pb-10 pt-4 sm:pb-14 sm:pt-8">
         <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.25 }} variants={fadeUp}>
           <Card className="contact-panel p-5 sm:p-8">
-            <p className="font-mono text-xs uppercase tracking-[0.2em] text-red-400">Contact</p>
-            <h2 className="mt-4 font-display text-2xl text-white sm:text-4xl">Let’s build something that ships and scales.</h2>
-            <p className="mt-3 max-w-2xl text-sm text-gray-200 sm:mt-4 sm:text-base">
-              I'm available for product partnerships, AI-powered experiences, and full-cycle application development from strategy through launch.
-            </p>
-            <div className="mt-5 flex flex-wrap gap-2.5 sm:mt-7 sm:gap-3">
-              <MagneticButton href="mailto:hello@example.com" className="cta-glow-button">Start a Conversation</MagneticButton>
-              <MagneticButton href="#projects" variant="secondary">
-                View Projects
-              </MagneticButton>
+            <div className="grid gap-8 lg:grid-cols-[1.05fr,0.95fr]">
+              <div>
+                <p className="font-mono text-xs uppercase tracking-[0.2em] text-red-400">Contact</p>
+                <h2 className="mt-4 font-display text-2xl text-white sm:text-4xl">Let’s build something that ships and scales.</h2>
+                <p className="mt-3 max-w-2xl text-sm text-gray-200 sm:mt-4 sm:text-base">
+                  I'm available for product partnerships, AI-powered experiences, and full-cycle application development from strategy through launch.
+                </p>
+                <div className="mt-5 flex flex-wrap gap-2.5 sm:mt-7 sm:gap-3">
+                  <MagneticButton href="mailto:jaydin@jaydinmorrison.com" className="cta-glow-button">
+                    Email Directly
+                  </MagneticButton>
+                  <MagneticButton href="#projects" variant="secondary">
+                    View Projects
+                  </MagneticButton>
+                </div>
+              </div>
+
+              <form onSubmit={handleContactSubmit} className="space-y-4 rounded-2xl border border-white/15 bg-black/40 p-4 sm:p-6" noValidate>
+                <div>
+                  <label htmlFor="contact-name" className="block font-mono text-xs uppercase tracking-[0.16em] text-gray-300">
+                    Name
+                  </label>
+                  <input
+                    id="contact-name"
+                    name="name"
+                    type="text"
+                    required
+                    value={contactForm.name}
+                    onChange={(e) => setContactForm((prev) => ({ ...prev, name: e.target.value }))}
+                    placeholder="Your name"
+                    className="mt-1.5 w-full rounded-xl border border-white/20 bg-white/5 px-3.5 py-2.5 text-sm text-white placeholder-gray-400 transition focus:border-red-500 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="contact-email" className="block font-mono text-xs uppercase tracking-[0.16em] text-gray-300">
+                    Email
+                  </label>
+                  <input
+                    id="contact-email"
+                    name="email"
+                    type="email"
+                    required
+                    value={contactForm.email}
+                    onChange={(e) => setContactForm((prev) => ({ ...prev, email: e.target.value }))}
+                    placeholder="you@example.com"
+                    className="mt-1.5 w-full rounded-xl border border-white/20 bg-white/5 px-3.5 py-2.5 text-sm text-white placeholder-gray-400 transition focus:border-red-500 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="contact-message" className="block font-mono text-xs uppercase tracking-[0.16em] text-gray-300">
+                    Message
+                  </label>
+                  <textarea
+                    id="contact-message"
+                    name="message"
+                    rows={3}
+                    required
+                    value={contactForm.message}
+                    onChange={(e) => setContactForm((prev) => ({ ...prev, message: e.target.value }))}
+                    placeholder="Tell me about your project..."
+                    className="mt-1.5 w-full rounded-xl border border-white/20 bg-white/5 px-3.5 py-2.5 text-sm text-white placeholder-gray-400 transition focus:border-red-500 focus:outline-none"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={contactStatus.state === 'submitting'}
+                  className="cta-glow-button inline-flex min-h-[44px] w-full items-center justify-center rounded-full border border-red-500 bg-red-500 px-5 py-2.5 text-sm font-semibold text-white shadow-[0_10px_35px_rgba(225,6,0,0.35)] transition hover:border-red-600 hover:bg-red-600 disabled:opacity-60"
+                >
+                  {contactStatus.state === 'submitting' ? 'Sending...' : 'Send Message'}
+                </button>
+                {contactStatus.detail ? (
+                  <p
+                    role="status"
+                    className={`text-xs ${contactStatus.state === 'error' ? 'text-red-300' : 'text-emerald-300'}`}
+                  >
+                    {contactStatus.detail}
+                  </p>
+                ) : null}
+              </form>
             </div>
           </Card>
         </motion.div>

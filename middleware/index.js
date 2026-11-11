@@ -16,16 +16,26 @@ const xss = require('xss-clean')
 const basicAuth = require('express-basic-auth')
 const { createProxyMiddleware } = require('http-proxy-middleware')
 const cors = require('cors')
-const fetch = require('node-fetch')
 require('dotenv').config()
 
 const app = express()
 
-// Apply security middlewares
-app.use(helmet())
+// Apply security middlewares with CSP allowances for Next.js, Google Fonts, and Unsplash images
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+        styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+        fontSrc: ["'self'", 'https://fonts.gstatic.com', 'data:'],
+        imgSrc: ["'self'", 'data:', 'blob:', 'https://images.unsplash.com'],
+        connectSrc: ["'self'", 'ws:', 'wss:'],
+      },
+    },
+  }),
+)
 app.use(cors())
-app.use(express.json())
-app.use(xss())
 
 // Configure basic authentication
 let users = {}
@@ -44,24 +54,14 @@ if (process.env.BASIC_AUTH_USER && process.env.BASIC_AUTH_PASS) {
     '[DEV WARNING] BASIC_AUTH_USER or BASIC_AUTH_PASS not set. Basic auth disabled for local development.'
   )
 }
-// Base URL of the Django API, including the /api prefix
-const djangoApiUrl = process.env.DJANGO_API_URL || 'http://localhost:8000/'
 
-// Proxy all /api requests to Django, removing the /api prefix
-app.use(
-  '/api',
-  createProxyMiddleware({
-    target: djangoApiUrl,
-    changeOrigin: true,
-    pathRewrite: {
-      '^/api': '',
-    },
-  }),
-)
+// Normalize the Django API base URL so it consistently ends with `/api`
+const rawDjangoUrl = (process.env.DJANGO_API_URL || 'http://localhost:8000/api').replace(/\/+$/, '')
+const djangoApiUrl = rawDjangoUrl.endsWith('/api') ? rawDjangoUrl : `${rawDjangoUrl}/api`
 
-// Example of intercepting a specific endpoint (contact form)
-app.post('/api/contact', async (req, res) => {
-  const { name, email, message } = req.body
+// Intercept specific endpoint (contact form) BEFORE the catch-all /api proxy
+app.post('/api/contact', express.json(), xss(), async (req, res) => {
+  const { name, email, message } = req.body || {}
   if (!name || !email || !message) {
     return res.status(400).json({ error: 'Missing required fields.' })
   }
@@ -78,6 +78,18 @@ app.post('/api/contact', async (req, res) => {
     return res.status(500).json({ error: 'Internal server error.' })
   }
 })
+
+// Proxy all remaining /api requests to Django
+app.use(
+  '/api',
+  createProxyMiddleware({
+    target: djangoApiUrl,
+    changeOrigin: true,
+    pathRewrite: {
+      '^/api': '',
+    },
+  }),
+)
 
 // In production, forward all non-API requests to Next.js.
 if (process.env.NODE_ENV === 'production') {

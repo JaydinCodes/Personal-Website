@@ -15,8 +15,8 @@ class StaticViewSitemap(Sitemap):
     priority = 0.6
 
     def items(self):
-        # These correspond to Vue history routes
-        return ["/", "/projects", "/about", "/contact"]
+        # Single-page Next.js application root
+        return ["/"]
 
     def location(self, item):  # type: ignore[override]
         return item

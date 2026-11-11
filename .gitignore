@@ -1,6 +1,7 @@
-# Ignore Python bytecode and virtual environment
+# Ignore Python bytecode, local SQLite databases, and virtual environment
 __pycache__/
 .venv/
+*.sqlite3
 
 # Ignore node dependencies and build artifacts
 **/node_modules/
